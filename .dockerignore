@@ -1,0 +1,53 @@
+# Docker ignore file for team-wellbeing-agent
+# Exclude unnecessary files from Docker build context
+
+# Version control
+.git
+.gitignore
+
+# IDE files
+.idea
+.vscode
+*.iml
+*.ipr
+*.iws
+
+# Build outputs (except target/*.jar)
+target/classes
+target/generated-sources
+target/maven-archiver
+target/maven-status
+target/*.original
+
+# Maven wrapper
+.mvn
+mvnw
+mvnw.cmd
+
+# Documentation
+*.md
+TeamWellbeingAgent-ScopeAndDesign.md
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Environment files
+.env*
+application-local.yml
+application-dev.yml
+application-secrets.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results
+target/surefire-reports
+target/failsafe-reports
