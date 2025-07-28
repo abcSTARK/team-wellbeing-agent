@@ -8,18 +8,24 @@ import com.slack.api.methods.response.conversations.ConversationsHistoryResponse
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.model.Conversation;
 import com.slack.api.model.Message;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import com.slack.api.model.ConversationType;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service for integrating with Slack API to collect channel messages
@@ -32,11 +38,14 @@ public class SlackService {
 
     private final IntegrationProperties integrationProperties;
     private final Slack slack;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public SlackService(IntegrationProperties integrationProperties) {
         this.integrationProperties = integrationProperties;
         this.slack = Slack.getInstance();
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
     }
 
     /**
@@ -60,8 +69,8 @@ public class SlackService {
         try {
             String botToken = integrationProperties.getSlack().getBotToken();
             if (botToken == null || botToken.startsWith("your-slack")) {
-                logger.warn("Slack bot token not configured. Returning empty message list.");
-                return messages;
+                logger.warn("Slack bot token not configured. Loading dummy messages from sample data.");
+                return loadDummyMessages(channelName);
             }
 
             // Find the channel ID for the given channel name
@@ -108,8 +117,8 @@ public class SlackService {
         try {
             String botToken = integrationProperties.getSlack().getBotToken();
             if (botToken == null || botToken.startsWith("your-slack")) {
-                logger.warn("Slack bot token not configured. Returning empty channel list.");
-                return channelNames;
+                logger.warn("Slack bot token not configured. Returning dummy channel list.");
+                return getDummyChannels();
             }
 
             ConversationsListResponse response = slack.methods(botToken)
@@ -132,6 +141,33 @@ public class SlackService {
         }
 
         return channelNames;
+    }
+
+    /**
+     * Gets dummy channel names from the sample data.
+     * 
+     * @return List of unique channel names from dummy data
+     */
+    private List<String> getDummyChannels() {
+        try {
+            ClassPathResource resource = new ClassPathResource("sample-slack-messages.json");
+            try (InputStream inputStream = resource.getInputStream()) {
+                List<SlackMessage> allMessages = objectMapper.readValue(inputStream, new TypeReference<List<SlackMessage>>() {});
+                
+                List<String> channelNames = allMessages.stream()
+                        .map(SlackMessage::getChannelName)
+                        .distinct()
+                        .collect(Collectors.toList());
+                
+                logger.info("Found {} unique channels in dummy data", channelNames.size());
+                return channelNames;
+            }
+        } catch (IOException e) {
+            logger.error("Error loading dummy channels from sample-slack-messages.json", e);
+            List<String> defaultChannels = new ArrayList<>();
+            defaultChannels.add("general");
+            return defaultChannels;
+        }
     }
 
     /**
@@ -204,6 +240,36 @@ public class SlackService {
         }
         
         return slackMessage;
+    }
+
+    /**
+     * Loads dummy messages from the sample JSON file.
+     * 
+     * @param channelName The channel name to filter by, or null for all messages
+     * @return List of dummy SlackMessage objects
+     */
+    private List<SlackMessage> loadDummyMessages(String channelName) {
+        try {
+            ClassPathResource resource = new ClassPathResource("sample-slack-messages.json");
+            try (InputStream inputStream = resource.getInputStream()) {
+                List<SlackMessage> allMessages = objectMapper.readValue(inputStream, new TypeReference<List<SlackMessage>>() {});
+                
+                // Filter by channel name if specified
+                if (channelName != null && !channelName.isEmpty()) {
+                    List<SlackMessage> filteredMessages = allMessages.stream()
+                            .filter(message -> channelName.equals(message.getChannelName()))
+                            .collect(Collectors.toList());
+                    logger.info("Loaded {} dummy messages for channel '{}'", filteredMessages.size(), channelName);
+                    return filteredMessages;
+                }
+                
+                logger.info("Loaded {} dummy messages from sample data", allMessages.size());
+                return allMessages;
+            }
+        } catch (IOException e) {
+            logger.error("Error loading dummy messages from sample-slack-messages.json", e);
+            return new ArrayList<>();
+        }
     }
 
     /**
