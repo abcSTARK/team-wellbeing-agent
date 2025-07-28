@@ -1,0 +1,63 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: team-wellbeing-agent
+
+# Integration Configuration
+integrations:
+  slack:
+    # Slack Bot Token (starts with xoxb-)
+    bot-token: ${SLACK_BOT_TOKEN:your-slack-bot-token-here}
+    # Slack App Token (starts with xapp-)
+    app-token: ${SLACK_APP_TOKEN:your-slack-app-token-here}
+    # Default channel to monitor (without #)
+    default-channel: ${SLACK_DEFAULT_CHANNEL:general}
+    
+  github:
+    # GitHub Personal Access Token
+    token: ${GITHUB_TOKEN:your-github-token-here}
+    # GitHub organization or username
+    owner: ${GITHUB_OWNER:your-github-owner}
+    # Default repository to monitor
+    repository: ${GITHUB_REPOSITORY:your-repository}
+    
+  jira:
+    # Jira instance URL (e.g., https://yourcompany.atlassian.net)
+    url: ${JIRA_URL:https://your-company.atlassian.net}
+    # Jira username/email
+    username: ${JIRA_USERNAME:your-jira-username}
+    # Jira API token
+    token: ${JIRA_TOKEN:your-jira-api-token}
+    # Default project key to monitor
+    project-key: ${JIRA_PROJECT_KEY:PROJ}
+
+# Scheduling Configuration
+scheduling:
+  # How often to collect data from all integrations (in milliseconds)
+  # Default: 5 minutes
+  data-collection-interval: ${DATA_COLLECTION_INTERVAL:300000}
+  # Initial delay before first execution (in milliseconds)
+  # Default: 30 seconds
+  initial-delay: ${INITIAL_DELAY:30000}
+
+# Logging Configuration
+logging:
+  level:
+    com.abcstark.teamwellbeing: INFO
+    org.springframework.web: WARN
+    com.slack.api: WARN
+    org.kohsuke.github: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Management endpoints for health checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
