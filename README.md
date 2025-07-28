@@ -144,6 +144,76 @@ java -jar target/team-wellbeing-agent-0.1.0-SNAPSHOT.jar
 
 The application will start on port 8090 by default.
 
+## Docker Deployment
+
+The application includes a Dockerfile for easy deployment to container platforms like IBM Cloud Code Engine.
+
+### Building the Docker Image
+
+First, build the application JAR:
+
+```bash
+mvn clean package
+```
+
+Then build the Docker image:
+
+```bash
+# Build with default JAR pattern
+docker build -t team-wellbeing-agent .
+
+# Or specify a specific JAR file
+docker build --build-arg JAR_FILE=target/team-wellbeing-agent-0.1.0-SNAPSHOT.jar -t team-wellbeing-agent .
+```
+
+### Running the Docker Container
+
+```bash
+# Run on port 8080 (IBM Cloud compatible)
+docker run -p 8080:8080 team-wellbeing-agent
+
+# Run on custom port
+docker run -p 9090:9090 -e SERVER_PORT=9090 team-wellbeing-agent
+
+# Run with environment variables for API credentials
+docker run -p 8080:8080 \
+  -e SLACK_BOT_TOKEN="your-slack-token" \
+  -e GITHUB_TOKEN="your-github-token" \
+  -e JIRA_URL="https://your-company.atlassian.net" \
+  -e JIRA_USERNAME="your-email@company.com" \
+  -e JIRA_TOKEN="your-jira-token" \
+  team-wellbeing-agent
+```
+
+### Deploying to IBM Cloud Code Engine
+
+1. Build and push the image to a container registry:
+
+```bash
+# Tag for IBM Cloud Container Registry
+docker tag team-wellbeing-agent us.icr.io/your-namespace/team-wellbeing-agent:latest
+
+# Push to registry
+docker push us.icr.io/your-namespace/team-wellbeing-agent:latest
+```
+
+2. Deploy using IBM Cloud CLI:
+
+```bash
+# Create a new application
+ibmcloud ce application create --name team-wellbeing-agent \
+  --image us.icr.io/your-namespace/team-wellbeing-agent:latest \
+  --port 8080 \
+  --env SLACK_BOT_TOKEN="your-slack-token" \
+  --env GITHUB_TOKEN="your-github-token"
+```
+
+The Docker image includes:
+- Eclipse Temurin 17 JRE (Alpine-based for smaller size)
+- Non-root user for security
+- Port 8080 exposed for IBM Cloud compatibility
+- Configurable via environment variables
+
 ## Usage
 
 ### API Endpoints
