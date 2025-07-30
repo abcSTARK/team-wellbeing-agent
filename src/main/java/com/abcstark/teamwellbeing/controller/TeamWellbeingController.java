@@ -3,6 +3,7 @@ package com.abcstark.teamwellbeing.controller;
 import com.abcstark.teamwellbeing.model.GitHubIssue;
 import com.abcstark.teamwellbeing.model.JiraIssue;
 import com.abcstark.teamwellbeing.model.SlackMessage;
+import com.abcstark.teamwellbeing.model.TeamWellbeingStatus;
 import com.abcstark.teamwellbeing.persistence.InMemoryPersistenceService;
 import com.abcstark.teamwellbeing.scheduled.DataCollectionScheduler;
 import com.abcstark.teamwellbeing.service.GitHubService;
@@ -206,5 +207,14 @@ public class TeamWellbeingController {
         response.put("message", "All data cleared successfully");
         
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * MCP endpoint to fetch team wellbeing status for orchestrator.
+     */
+    @GetMapping("/mcp/status")
+    public ResponseEntity<TeamWellbeingStatus> getTeamWellbeingStatus() {
+        TeamWellbeingStatus status = slackService.analyzeTeamWellbeing();
+        return ResponseEntity.ok(status);
     }
 }

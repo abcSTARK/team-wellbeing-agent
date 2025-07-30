@@ -2,6 +2,7 @@ package com.abcstark.teamwellbeing.service;
 
 import com.abcstark.teamwellbeing.config.IntegrationProperties;
 import com.abcstark.teamwellbeing.model.SlackMessage;
+import com.abcstark.teamwellbeing.model.TeamWellbeingStatus;
 import com.slack.api.Slack;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
@@ -22,9 +23,10 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
+import java.util.*;
+
 import com.slack.api.model.ConversationType;
-import java.util.List;
+
 import java.util.stream.Collectors;
 
 /**
@@ -297,5 +299,56 @@ public class SlackService {
             logger.error("Slack connection test failed", e);
             return false;
         }
+    }
+
+    /**
+     * Analyzes recent Slack messages to infer team wellbeing status using simple rule-based logic.
+     * @return TeamWellbeingStatus
+     */
+    public TeamWellbeingStatus analyzeTeamWellbeing() {
+        List<SlackMessage> messages = getRecentMessages();
+        int moodScore = 0;
+        int stressScore = 0;
+        Map<String, Integer> overloadCount = new HashMap<>();
+        Map<String, String> memberFeelings = new HashMap<>();
+
+        List<String> positiveWords = Arrays.asList("happy", "great", "awesome", "good", "excited", "love");
+        List<String> negativeWords = Arrays.asList("sad", "bad", "tired", "upset", "angry", "hate");
+        List<String> stressWords = Arrays.asList("stress", "overwhelmed", "busy", "deadline", "pressure");
+        List<String> overloadWords = Arrays.asList("overloaded", "too much", "can't handle", "swamped");
+
+        for (SlackMessage msg : messages) {
+            String text = msg.getText().toLowerCase();
+            String user = msg.getUsername();
+            for (String word : positiveWords) {
+                if (text.contains(word)) moodScore++;
+            }
+            for (String word : negativeWords) {
+                if (text.contains(word)) moodScore--;
+            }
+            for (String word : stressWords) {
+                if (text.contains(word)) stressScore++;
+            }
+            for (String word : overloadWords) {
+                if (text.contains(word)) {
+                    overloadCount.put(user, overloadCount.getOrDefault(user, 0) + 1);
+                }
+            }
+            // Simple feeling extraction
+            if (text.contains("feel")) {
+                int idx = text.indexOf("feel");
+                String feeling = text.substring(idx + 4).trim().split(" ")[0];
+                memberFeelings.put(user, feeling);
+            }
+        }
+
+        String overallMood = moodScore > 2 ? "positive" : (moodScore < -2 ? "negative" : "neutral");
+        String overallStressLevel = stressScore > 2 ? "high" : (stressScore < 1 ? "low" : "moderate");
+        List<String> overloadedMembers = overloadCount.entrySet().stream()
+                .filter(e -> e.getValue() > 0)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+        return new TeamWellbeingStatus(overallMood, overallStressLevel, overloadedMembers, memberFeelings);
     }
 }
